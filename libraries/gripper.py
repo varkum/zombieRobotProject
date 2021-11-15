@@ -10,8 +10,10 @@ OFFSET_WHEN_LOCKED = 0.021
 class Gripper(Robot):
   def __init__(self):
         super(Gripper, self).__init__()
-        self.fingers[LEFT] = self.getDevice('finger1')
-        self.fingers[RIGHT] = self.getDevice('finger2')
+        #fingers[0] is LEft, 1 is rIGHT
+        self.fingers = []
+        self.fingers.append(self.getDevice('finger1'))
+        self.fingers.append(self.getDevice('finger2'))
 
         self.fingers[LEFT].setVelocity(0.03)
         self.fingers[RIGHT].setVelocity(0.03)
