@@ -18,18 +18,18 @@ class Gripper(Robot):
         self.fingers[LEFT].setVelocity(0.03)
         self.fingers[RIGHT].setVelocity(0.03)
 
-  def gripper_grip(self):
+  def grip(self):
     self.fingers[LEFT].setPosition(float(MIN_POS))
     self.fingers[RIGHT].setPosition(float(MIN_POS))
 
 
-def gripper_release(self):
-  self.fingers[LEFT].setPosition(float(MAX_POS))
-  self.fingers[RIGHT].setPosition(float(MAX_POS))
+  def release(self):
+   self.fingers[LEFT].setPosition(float(MAX_POS))
+    self.fingers[RIGHT].setPosition(float(MAX_POS))
 
 
-def gripper_set_gap(self, double gap):
-  #implement bound function v = bound(0.5 * (gap - OFFSET_WHEN_LOCKED), MIN_POS, MAX_POS);
-  self.fingers[LEFT].setPosition(float(v))
-  self.fingers[RIGHT].setPosition(float(v))
+  def setGap(self, double gap):
+    #implement bound function v = bound(0.5 * (gap - OFFSET_WHEN_LOCKED), MIN_POS, MAX_POS);
+    self.fingers[LEFT].setPosition(float(v))
+    self.fingers[RIGHT].setPosition(float(v))
 
