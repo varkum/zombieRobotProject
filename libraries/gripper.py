@@ -1,4 +1,5 @@
 from controller import Robot, Motor
+from tiny_math import bound
 
 LEFT = 0
 RIGHT= 1
@@ -29,7 +30,7 @@ class Gripper(Robot):
 
 
   def setGap(self, double gap):
-    #implement bound function v = bound(0.5 * (gap - OFFSET_WHEN_LOCKED), MIN_POS, MAX_POS);
+    v = bound(0.5 * (gap - OFFSET_WHEN_LOCKED), MIN_POS, MAX_POS);
     self.fingers[LEFT].setPosition(float(v))
     self.fingers[RIGHT].setPosition(float(v))
 
