@@ -4,38 +4,33 @@ from controller import Robot, Motor, Camera, Accelerometer, GPS, Gyro, LightSens
 from controller import Supervisor
 
 from youbot_zombie import *
+
+#import subsumption behaviors
+from wander import *
+from pursueBerry import *
+from goToSolid import *
+from avoidZombie import *
+from avoidPurpleZombie import *
    
 #------------------CHANGE CODE BELOW HERE ONLY--------------------------
 #define functions here for making decisions and using sensor inputs
 
-#collects all the vectors from individual behaviors to sum later
-vectors = []
 
-#records all objects detected in camera fov or lidar
+
+#records all objects detected in camera fov or lidar and their attributes: {distance, compass direction, type, subtype}
 objects = []
 
-#generates repulsive vector when zombie detected in objects
-def avoidZombie():
-  return
-
-#avoids purple zombie by pursuing a berry
-def avoidPurpleZombie():
-  return
-
-#turns towards a detected solid in the lidar to classify it
-def goToSolid():
-  return
-
-#generates attractive vector towards a berry depending on type of berry
-def pursueBerry():
-  return
-
-#randomly wanders when no objects detected
-def wander():
-  return
 
 
-def
+
+
+
+
+
+
+
+
+
 
 
 #------------------CHANGE CODE ABOVE HERE ONLY--------------------------
