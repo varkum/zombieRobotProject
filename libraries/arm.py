@@ -2,8 +2,7 @@ from controller import Robot, Motor
 
 ARM1, ARM2, ARM3, ARM4, ARM5 = 0, 1, 2, 3, 4
 
-static enum Height current_height = ARM_RESET;
-static enum Orientation current_orientation = ARM_FRONT;
+
 
 class Arm(Robot):
   def __init(self)__:
@@ -16,22 +15,22 @@ class Arm(Robot):
     self.armElements.append(self.getDevice("arm5"))
 
 
-  self.armElements[ARM2].setVelocity(0.5);
+  self.armElements[ARM2].setVelocity(0.5)
 
-  arm_set_height(ARM_RESET);
-  arm_set_orientation(ARM_FRONT);
+  armSetHeight("ARM_RESET")
+  armSetOrientation("ARM_FRONT")
 
 
-void arm_reset() {
-  wb_motor_set_position(arm_elements[ARM1], 0.0);
-  wb_motor_set_position(arm_elements[ARM2], 1.57);
-  wb_motor_set_position(arm_elements[ARM3], -2.635);
-  wb_motor_set_position(arm_elements[ARM4], 1.78);
-  wb_motor_set_position(arm_elements[ARM5], 0.0);
-}
+  def armReset(self):
+    self.armElements[ARM1].setPosition(0.0)
+    self.armElements[ARM2].setPosition(1.57)
+    self.armElements[ARM3].setPosition(-2.635)
+    self.armElements[ARM4].setPosition(1.78)
+    self.armElements[ARM5].setPosition(0.0)
 
-void arm_set_height(enum Height height) {
-  switch (height) {
+
+  def armSetHeight(self, height):
+    
     case ARM_FRONT_FLOOR:
       wb_motor_set_position(arm_elements[ARM2], -0.97);
       wb_motor_set_position(arm_elements[ARM3], -1.55);
@@ -81,35 +80,7 @@ void arm_set_height(enum Height height) {
   current_height = height;
 }
 
-void arm_set_orientation(enum Orientation orientation) {
-  switch (orientation) {
-    case ARM_BACK_LEFT:
-      wb_motor_set_position(arm_elements[ARM1], -2.949);
-      break;
-    case ARM_LEFT:
-      wb_motor_set_position(arm_elements[ARM1], -M_PI_2);
-      break;
-    case ARM_FRONT_LEFT:
-      wb_motor_set_position(arm_elements[ARM1], -0.2);
-      break;
-    case ARM_FRONT:
-      wb_motor_set_position(arm_elements[ARM1], 0.0);
-      break;
-    case ARM_FRONT_RIGHT:
-      wb_motor_set_position(arm_elements[ARM1], 0.2);
-      break;
-    case ARM_RIGHT:
-      wb_motor_set_position(arm_elements[ARM1], M_PI_2);
-      break;
-    case ARM_BACK_RIGHT:
-      wb_motor_set_position(arm_elements[ARM1], 2.949);
-      break;
-    default:
-      fprintf(stderr, "arm_set_side() called with a wrong argument\n");
-      return;
-  }
-  current_orientation = orientation;
-}
+
 
 void arm_increase_height() {
   current_height++;
@@ -125,12 +96,7 @@ void arm_decrease_height() {
   arm_set_height(current_height);
 }
 
-void arm_increase_orientation() {
-  current_orientation++;
-  if (current_orientation >= ARM_MAX_SIDE)
-    current_orientation = ARM_MAX_SIDE - 1;
-  arm_set_orientation(current_orientation);
-}
+
 
 void arm_decrease_orientation() {
   current_orientation--;

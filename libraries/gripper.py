@@ -29,7 +29,7 @@ class Gripper(Robot):
     self.fingers[RIGHT].setPosition(float(MAX_POS))
 
 
-  def setGap(self, double gap):
+  def setGap(self, gap):
     v = bound(0.5 * (gap - OFFSET_WHEN_LOCKED), MIN_POS, MAX_POS);
     self.fingers[LEFT].setPosition(float(v))
     self.fingers[RIGHT].setPosition(float(v))
