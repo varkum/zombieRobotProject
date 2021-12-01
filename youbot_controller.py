@@ -12,6 +12,13 @@ BERRY = "BERRY"
 ZOMBIE = "ZOMBIE"
 HEALTH_BERRY = None
 ENERGY_BERRY = None
+# Keep track of berry effects with global dictionary
+# Format is ("primary_effect", "second_effect") 
+berry_effects = {}
+berry_effects["RED_BERRY"] = ("", "")
+berry_effects["YELLOW_BERRY"] = ("", "")
+berry_effects["ORANGE_BERRY"] = ("", "")
+berry_effects["PINK_BERRY"] = ("", "")
 #------------------CHANGE CODE BELOW HERE ONLY--------------------------
 #define functions here for making decisions and using sensor inputs
 
@@ -28,7 +35,6 @@ vectors = []
 
 # helper functions for extracting distance and heading given lidar information
 def compute_heading(x, z): return np.arctan(z / x)
-
 def compute_euclidian_distance(x, z): return np.sqrt(x ** 2 + z ** 2)
 
 class Vector:
@@ -42,15 +48,11 @@ class Object:
         self.location_vector = Vector(distance, heading)
         self.update_risk(risk_factor, attraction_factor)
       
-    def update_risk(self, risk_factor, attraction_factor):
+    def update_risk(self, risk_factor):
         # risk factor assesses danger based on distance from object
         self.risk_factor = risk_factor
-        
-        # attraction factor determines whether the object is repulsive or attractive
-        self.attraction_factor = attraction_factor
-        
-        # some multiplier of location vector and attraction_factor = -1 or 1
-        self.risk_vector = Vector(distance * risk_factor, heading * attraction_factor)
+        # update risk_vecotr with new risk factor and attraction_factor = -1 or 1
+        self.risk_vector = Vector(distance * risk_factor, heading * self.attraction_factor)
         
 class Zombie(Object):
     def __init__(self, distance, heading)
@@ -115,16 +117,19 @@ class BlueZombie(Zombie):
       super().__init__(distance, heading, risk_factor = self.risk_factor)
         
 #--helper--
-#Checks if a berry is in detected objects
+#Returns closest object of given type
 def checkForItem(objects, typeOfObject, *args):
+  distance = 11
+  itemFound = None
   for item in objects:
     if len(args) == 0:
-      if item.object_class == typeOfObject:
-        return True 
+      if item.object_class == typeOfObject and item.distance < distance:
+        itemFound = item
     else:
-      if item.object_class_subtype == args[0]:
-        return True
-  return False
+      if item.object_class_subtype == args[0] and item.distance < distance:
+        itemFound = item
+        
+  return itemFound
 
 #--Behavior--
 #wander when no objects in sight
@@ -138,7 +143,7 @@ def wander(objects):
   return heading, magnitude
 
 #--Behavior--
-#pursues closest berry or the one that's needed the most
+#pursues the berry that is needed the most, or the closest berry
 def pursueBerry(objects, robot_info):
   #store target berry object
   berry = None 
@@ -148,23 +153,42 @@ def pursueBerry(objects, robot_info):
   #DETERMINE HOW TO LEARN WHAT EACH BERRY DOES
 
   for item in objects:
-    if item.object_class == "BERRY":
-      #if health is low
-      if robot_info[0] < 50:
-        if item.object_class_subtype == HEALTH_BERRY:
+    robot_health = robot_info[0]
+    robot_energy = robot_info[1]
+
+    # only consume a berry if you need it: health < 80 and energy < 60
+    if item.object_class == "BERRY" and robot_health < 80 and robot_energy < 60:
+      berry_primary_effect = berry_effects[item.object_class_subtype][0]
+      berry_secondary_effect = berry_effects[item.object_class_subtype][1]
+      
+      #--Low health cases--
+      if robot_health < 60:
+        # if health is low and berry detected is known to give health, prioritize
+        if berry_primary_effect == "+20 HEALTH":
           berry = item
-      #if low energy
-      if robot_info[1] < 50:
-        if item.object_class_subtype == ENERGY_BERRY:
+      elif robot_health < 30:
+        #if health is VERY low and berry detected has possible side effect of extra health, prioritize
+        if berry_primary_effect == "+20 HEALTH" or berry_secondary_effect == "+20 HEALTH":
           berry = item
-      #get closest berry
-      if item.distance < distance:
+      
+      #--Low energy cases--
+      if robot_energy < 50:
+         # if low energy and berry detected is known to give energy, prioritize
+        if berry_primary_effect == "+40 ENERGY":
+          berry = item
+      elif robot_energy < 20:
+        #if energy is VERY low and berry detected has possible side effect of extra energy, prioritize
+        if berry_primary_effect == "+40 ENERGY" or berry_secondary_effect == "+40 ENERGY":
+          berry = item
+        
+      #--Closest berry case (Only do if robot cannot find another berry) --
+      if item.distance < distance and not berry:
         berry = item
         distance = item.distance
     
   if berry is not null:
     objects.remove(berry)
-    berry.attraction_factor = 0.5 * berry.distance
+    berry.item.update_risk(0.5 * berry.distance)
     objects.append(berry)
 
 #--Behavior--
@@ -180,7 +204,7 @@ def goToSolid(objects):
   target = None
   distance = 11
   #if there's no berries detected
-  if !checkForItem(objects, BERRY):
+  if  checkForItem(objects, BERRY) is None:
     for item in objects:
       if item.object_class != ZOMBIE:
         if item.distance < distance #get closest object
@@ -207,23 +231,33 @@ def avoidZombie(objects, robot_info):
     if item.object_class == "ZOMBIE":
       if item.object_class_subtype == "GREEN_ZOMBIE":
         # green zombies chase if you are near and move randomly when far
-        item.risk_factor = 0.5 * item.distance * risk_multiplier
+        item.update_risk(0.5 * item.distance * risk_multiplier)
       elif item.object_class_subtype == "BLUE_ZOMBIE":
         # will relentlessly chase robot
-        item.risk_factor = 0.3 * item.distance * risk_multiplier
+        item.update_risk(0.3 * item.distance * risk_multiplier)
       elif item.object_class_subtype == "AQUA_ZOMBIE":
         if item.distance < 4:
           # only generate when in 3m range
-          item.risk_factor = 1 * item.distance * risk_multiplier
-      else:
+          item.update_risk(1 * item.distance * risk_multiplier)
+      elif item.object_class_subtype == "PURPLE_ZOMBIE":
         # If purple zombie, call helper func
-        avoidPurpleZombie(item)
+        avoidPurpleZombie(objects, item, risk_multiplier)
+      else:
+          # RUN
 
 #--Behavior--
 #pursue a berry in the opposite direction of purple zombie
-def avoidPurpleZombie(objects):
-  #check if there's a objectsin front
+def avoidPurpleZombie(objects, item, risk_multiplier):
+  #check if there's a berry
+  targetBerry = checkForItem(objects, BERRY)
+  while targetBerry is not None and targetBerry.distance > 1:
+    #go towards berry 
     
+  #if close to berry, turn Right or left
+
+  #if no berry, just have the usual opposite vector 
+
+  
   
   return
 
@@ -357,7 +391,21 @@ def main():
         timer += 1
         
      #------------------CHANGE CODE BELOW HERE ONLY--------------------------   
-         #called every timestep
+        #called every timestep
+        curr_health = robot_info[0]
+        curr_energy = robot_info[1]
+        curr_armor = robot_info[2]
+
+        # previous berry can only have 1 effect
+        if (curr_health - prev_health >= 18):
+          # classify last berry as +20 HEALTH
+        elif(curr_energy - prev_energy <= -18):
+          # classify last berry as -20 ENERGY
+        elif(curr_energy - prev_energy >= 38):
+          # classify last berry as +40 ENERGY
+        elif(curr_armor >= 14):
+          # classify last berry as +15 ARMOR
+
         
         
         #possible pseudocode for moving forward, then doing a 90 degree left turn
@@ -367,13 +415,14 @@ def main():
         #if == 100 
             # base_reset() 
             # base_turn_left()  
-            #it takes about 150 timesteps for the robot to complete the turn
+            #it takes about 150 timesteps for the robot to compli ete the turn
                  
         #if i==300
             # i = 0
         
         #i+=1
-        
+        prev_health = curr_health
+        prev_energy = curr_energy
         #make decisions using inputs if you choose to do so
          
         #------------------CHANGE CODE ABOVE HERE ONLY--------------------------

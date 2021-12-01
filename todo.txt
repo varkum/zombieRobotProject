@@ -5,3 +5,4 @@ Purple zombie behavior - Varun
 Sum vectors
 Send vector to actuator
 Consider primary and secondary effects of berry
+Maneuver to get out of walls, get through doors, etc.
