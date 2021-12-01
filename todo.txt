@@ -1,0 +1,7 @@
+Update wander behavior to fit into vector schema
+Figure out how you're going to learn which berry is which
+Convert compass output to angles and vice versa
+Purple zombie behavior - Varun
+Sum vectors
+Send vector to actuator
+Consider primary and secondary effects of berry

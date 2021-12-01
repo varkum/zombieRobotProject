@@ -4,17 +4,14 @@ from controller import Robot, Motor, Camera, Accelerometer, GPS, Gyro, LightSens
 from controller import Supervisor
 
 from youbot_zombie import *
-
-#import motor schema behaviors
-from wander import *
-from pursueBerry import *
-from goToSolid import *
-from avoidZombie import *
-from avoidPurpleZombie import *
-
 import numpy as np
 
-   
+#constants from objects array
+#change based on output from objects
+BERRY = "BERRY" 
+ZOMBIE = "ZOMBIE"
+HEALTH_BERRY = None
+ENERGY_BERRY = None
 #------------------CHANGE CODE BELOW HERE ONLY--------------------------
 #define functions here for making decisions and using sensor inputs
 
@@ -29,10 +26,105 @@ objects = []
 #MIGHT MOVE THIS TO INSISDE ROBOT LOOP
 vectors = []
 
+# helper functions for extracting distance and heading given lidar information
+def compute_heading(x, z): return np.arctan(z / x)
+
+def compute_euclidian_distance(x, z): return np.sqrt(x ** 2 + z ** 2)
+
+class Vector:
+    def __init__(self, distance, heading):
+        self.distance = distance
+        self.heading = heading
+
+class Object:
+    def __init__(self, distance, heading, risk_factor=0, attraction_factor=1):
+        # placement of object relative to robot
+        self.location_vector = Vector(distance, heading)
+        self.update_risk(risk_factor, attraction_factor)
+      
+    def update_risk(self, risk_factor, attraction_factor):
+        # risk factor assesses danger based on distance from object
+        self.risk_factor = risk_factor
+        
+        # attraction factor determines whether the object is repulsive or attractive
+        self.attraction_factor = attraction_factor
+        
+        # some multiplier of location vector and attraction_factor = -1 or 1
+        self.risk_vector = Vector(distance * risk_factor, heading * attraction_factor)
+        
+class Zombie(Object):
+    def __init__(self, distance, heading)
+        self.object_class = "ZOMBIE"
+        self.risk_factor = 2
+        self.attraction_factor = -1
+        super().__init__(distance, heading, risk_factor = self.risk_factor)
+
+class Berry(Object):
+    def __init__(self, distance, heading):
+        self.object_class = "BERRY"
+        self.risk_factor = 0
+        self.attraction_factor = 1
+        super().__init__(distance, heading, risk_factor = self.risk_factor)
+
+class RedBerry(Berry):
+  def __init__(self, distance, heading):
+    self.object_class_subtype = "RED_BERRY"
+    self.primary_effect = ""
+    self.secondary_effect = ""
+    super().__init__(distance, heading, risk_factor = self.risk_factor)
+
+class YellowBerry(Berry):
+  def __init__(self, distance, heading):
+    self.object_class_subtype = "YELLOW_BERRY"
+    self.primary_effect = ""
+    self.secondary_effect = ""
+    super().__init__(distance, heading, risk_factor = self.risk_factor)
+
+class OrangeBerry(Berry):
+  def __init__(self, distance, heading):
+    self.object_class_subtype = "ORANGE_BERRY"
+    self.primary_effect = ""
+    self.secondary_effect = ""
+    super().__init__(distance, heading, risk_factor = self.risk_factor)
+
+class PinkBerry(Berry):
+  def __init__(self, distance, heading):
+    self.object_class_subtype = "PINK_BERRY"
+    self.primary_effect = ""
+    self.secondary_effect = ""
+    super().__init__(distance, heading, risk_factor = self.risk_factor)
+
+class AquaZombie(Zombie):
+    def __init__(self, distance, heading):
+      self.object_class_subtype = "AQUA_ZOMBIE"
+      super().__init__(distance, heading, risk_factor = self.risk_factor)
+
+class PurpleZombie(Zombie):
+    def __init__(self, distance, heading):
+      self.object_class_subtype = "PURPLE_ZOMBIE"
+      super().__init__(distance, heading, risk_factor = self.risk_factor)
+
+class GreenZombie(Zombie):
+    def __init__(self, distance, heading):
+      self.object_class_subtype = "GREEN_ZOMBIE"
+      super().__init__(distance, heading, risk_factor = self.risk_factor)
+
+class BlueZombie(Zombie):
+    def __init__(self, distance, heading):
+      self.object_class_subtype = "BLUE_ZOMBIE"
+      super().__init__(distance, heading, risk_factor = self.risk_factor)
+        
 #--helper--
 #Checks if a berry is in detected objects
-def checkForBerry(objects):
-  for item in objects: 
+def checkForItem(objects, typeOfObject, *args):
+  for item in objects:
+    if len(args) == 0:
+      if item.object_class == typeOfObject:
+        return True 
+    else:
+      if item.object_class_subtype == args[0]:
+        return True
+  return False
 
 #--Behavior--
 #wander when no objects in sight
@@ -50,62 +142,89 @@ def wander(objects):
 def pursueBerry(objects, robot_info):
   #store target berry object
   berry = None 
-  distance = 100
+  distance = 11
   heading, magnitude = 0, 0
   #UPDATE HOW YOU USE OBJECT LiST 
   #DETERMINE HOW TO LEARN WHAT EACH BERRY DOES
-  #WHAT IS THE DISTANCE Range
-
 
   for item in objects:
-    if item.type == "berry":
+    if item.object_class == "BERRY":
       #if health is low
       if robot_info[0] < 50:
-        if item.subtype == HEALTH_BERRY:
+        if item.object_class_subtype == HEALTH_BERRY:
           berry = item
       #if low energy
       if robot_info[1] < 50:
-        if item.subtype == ENERGY_BERRY:
+        if item.object_class_subtype == ENERGY_BERRY:
           berry = item
-
+      #get closest berry
       if item.distance < distance:
         berry = item
         distance = item.distance
     
-  
-  heading = berry.heading
-  magnitude = 0.5
-
-  return heading, magnitude
+  if berry is not null:
+    objects.remove(berry)
+    berry.attraction_factor = 0.5 * berry.distance
+    objects.append(berry)
 
 #--Behavior--
 def noise():
   magnitude = 0.01
   heading = np.random.normal(0, 0.25)
-
   return heading, magnitude
    
-
 
 #--Behavior--
 #turns towards a detected solid (not zombie) in the lidar to classify it
 def goToSolid(objects):
-  for item in objects:
+  target = None
+  distance = 11
+  #if there's no berries detected
+  if !checkForItem(objects, BERRY):
+    for item in objects:
+      if item.object_class != ZOMBIE:
+        if item.distance < distance #get closest object
+          target = item
+          distance = item.distance
 
+  if target is not None:
+    objects.remove(target)
+    target.attraction_factor = 0.1 * target.distance
+    objects.append(target)
 
-  return
-
-
-#takes wheel objects as parameters
-def avoidZombie():
+#--Behavior--
+def avoidZombie(objects, robot_info):
   #go in direction that is the sum of the opposite vectors of all zombies in camera fov
-  return
 
+  # If low health, the risk factor for each zombie drastically increases
+  risk_multiplier = 1
+  if robot_info[0] < 50:
+    risk_multiplier = 2
+  elif robot_info[0] < 30:
+    risk_multiplier = 3
 
-#avoids purple zombie by pursuing a berry
-#takes wheel objects as parameters
-def avoidPurpleZombie():
-  #pursue a berry in the opposite direction of purple zombie
+  for item in objects:
+    if item.object_class == "ZOMBIE":
+      if item.object_class_subtype == "GREEN_ZOMBIE":
+        # green zombies chase if you are near and move randomly when far
+        item.risk_factor = 0.5 * item.distance * risk_multiplier
+      elif item.object_class_subtype == "BLUE_ZOMBIE":
+        # will relentlessly chase robot
+        item.risk_factor = 0.3 * item.distance * risk_multiplier
+      elif item.object_class_subtype == "AQUA_ZOMBIE":
+        if item.distance < 4:
+          # only generate when in 3m range
+          item.risk_factor = 1 * item.distance * risk_multiplier
+      else:
+        # If purple zombie, call helper func
+        avoidPurpleZombie(item)
+
+#--Behavior--
+#pursue a berry in the opposite direction of purple zombie
+def avoidPurpleZombie(objects):
+  #check if there's a objectsin front
+    
+  
   return
 
 
