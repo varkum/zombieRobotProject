@@ -5,21 +5,108 @@ from controller import Supervisor
 
 from youbot_zombie import *
 
-#import subsumption behaviors
+#import motor schema behaviors
 from wander import *
 from pursueBerry import *
 from goToSolid import *
 from avoidZombie import *
 from avoidPurpleZombie import *
+
+import numpy as np
+
    
 #------------------CHANGE CODE BELOW HERE ONLY--------------------------
 #define functions here for making decisions and using sensor inputs
 
+#randomly wanders when no objects detected
+#takes the wheel objects as parameters
 
 
 #records all objects detected in camera fov or lidar and their attributes: {distance, compass direction, type, subtype}
 objects = []
 
+#collects vectors from behaviors
+#MIGHT MOVE THIS TO INSISDE ROBOT LOOP
+vectors = []
+
+#--helper--
+#Checks if a berry is in detected objects
+def checkForBerry(objects):
+  for item in objects: 
+
+#--Behavior--
+#wander when no objects in sight
+def wander(objects):
+  heading, magnitude = 0, 0
+  
+  if len(objects) == 0:
+    heading = np.random.normal(1, 0.25) * 3.141596
+    magnitude = 0.2
+  
+  return heading, magnitude
+
+#--Behavior--
+#pursues closest berry or the one that's needed the most
+def pursueBerry(objects, robot_info):
+  #store target berry object
+  berry = None 
+  distance = 100
+  heading, magnitude = 0, 0
+  #UPDATE HOW YOU USE OBJECT LiST 
+  #DETERMINE HOW TO LEARN WHAT EACH BERRY DOES
+  #WHAT IS THE DISTANCE Range
+
+
+  for item in objects:
+    if item.type == "berry":
+      #if health is low
+      if robot_info[0] < 50:
+        if item.subtype == HEALTH_BERRY:
+          berry = item
+      #if low energy
+      if robot_info[1] < 50:
+        if item.subtype == ENERGY_BERRY:
+          berry = item
+
+      if item.distance < distance:
+        berry = item
+        distance = item.distance
+    
+  
+  heading = berry.heading
+  magnitude = 0.5
+
+  return heading, magnitude
+
+#--Behavior--
+def noise():
+  magnitude = 0.01
+  heading = np.random.normal(0, 0.25)
+
+  return heading, magnitude
+   
+
+
+#--Behavior--
+#turns towards a detected solid (not zombie) in the lidar to classify it
+def goToSolid(objects):
+  for item in objects:
+
+
+  return
+
+
+#takes wheel objects as parameters
+def avoidZombie():
+  #go in direction that is the sum of the opposite vectors of all zombies in camera fov
+  return
+
+
+#avoids purple zombie by pursuing a berry
+#takes wheel objects as parameters
+def avoidPurpleZombie():
+  #pursue a berry in the opposite direction of purple zombie
+  return
 
 
 
