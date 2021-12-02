@@ -13,12 +13,13 @@ ZOMBIE = "ZOMBIE"
 HEALTH_BERRY = None
 ENERGY_BERRY = None
 # Keep track of berry effects with global dictionary
-# Format is ("primary_effect", "second_effect") 
+# Format is "COLOR_BERRY" : [("primary_effect", primary_count), ("second_effect", secondary_count)]
+
 berry_effects = {}
-berry_effects["RED_BERRY"] = ("", "")
-berry_effects["YELLOW_BERRY"] = ("", "")
-berry_effects["ORANGE_BERRY"] = ("", "")
-berry_effects["PINK_BERRY"] = ("", "")
+berry_effects["RED_BERRY"] = [["", 0], ["", 0]]
+berry_effects["YELLOW_BERRY"] = [["", 0], ["", 0]]
+berry_effects["ORANGE_BERRY"] = [["", 0], ["", 0]]
+berry_effects["PINK_BERRY"] = [["", 0], ["", 0]]
 #------------------CHANGE CODE BELOW HERE ONLY--------------------------
 #define functions here for making decisions and using sensor inputs
 
@@ -55,7 +56,7 @@ class Object:
         self.risk_vector = Vector(distance * risk_factor, heading * self.attraction_factor)
         
 class Zombie(Object):
-    def __init__(self, distance, heading)
+    def __init__(self, distance, heading):
         self.object_class = "ZOMBIE"
         self.risk_factor = 2
         self.attraction_factor = -1
@@ -131,6 +132,7 @@ def checkForItem(objects, typeOfObject, *args):
         
   return itemFound
 
+
 #--Behavior--
 #wander when no objects in sight
 def wander(objects):
@@ -142,8 +144,40 @@ def wander(objects):
   
   return heading, magnitude
 
+
+#--Helper--
+def updateBerryDict(berry_color, berry_effect):
+  first_effect_list = berry_effects[berry_color][0]
+  first_effect = first_effect_list[0]
+  second_effect_list = berry_effects[berry_color][1]
+  second_effect = second_effect_list[0]
+
+  if (berry_effect == first_effect):
+    # increment first effect frequency
+    berry_effects[berry_color][0][1] += 1
+  elif (berry_effect == second_effect):
+    # increment second effect frequency
+    berry_effects[berry_color][1][1] += 1
+  else:
+    if first_effect == "":
+       # effect is not found, just update the first effect data
+      berry_effects[berry_color][0][0] = berry_effect
+      berry_effects[berry_color][0][1] += 1
+    elif second_effect == "":
+      # effect is not found, update the second effect data
+      berry_effects[berry_color][1][0] = berry_effect
+      berry_effects[berry_color][1][1] += 1
+    else:
+      print("error more than 3 effects detected")
+
+  # replace second effect with first effect if it is larger in frequency
+  if berry_effects[berry_color][1][1] > berry_effects[berry_color][0][1]:
+    temp = berry_effects[berry_color][0]
+    berry_effects[berry_color][0] = berry_effects[berry_color][1]
+    berry_effects[berry_color][1] = temp
+
 #--Behavior--
-#pursues the berry that is needed the most, or the closest berry
+# pursues the berry that is needed the most, or the closest berry
 def pursueBerry(objects, robot_info):
   #store target berry object
   berry = None 
@@ -158,8 +192,8 @@ def pursueBerry(objects, robot_info):
 
     # only consume a berry if you need it: health < 80 and energy < 60
     if item.object_class == "BERRY" and robot_health < 80 and robot_energy < 60:
-      berry_primary_effect = berry_effects[item.object_class_subtype][0]
-      berry_secondary_effect = berry_effects[item.object_class_subtype][1]
+      berry_primary_effect = berry_effects[item.object_class_subtype][0][0]
+      berry_secondary_effect = berry_effects[item.object_class_subtype][1][0]
       
       #--Low health cases--
       if robot_health < 60:
@@ -204,10 +238,10 @@ def goToSolid(objects):
   target = None
   distance = 11
   #if there's no berries detected
-  if  checkForItem(objects, BERRY) is None:
+  if checkForItem(objects, BERRY) is None:
     for item in objects:
       if item.object_class != ZOMBIE:
-        if item.distance < distance #get closest object
+        if item.distance < distance: #get closest object
           target = item
           distance = item.distance
 
@@ -242,7 +276,7 @@ def avoidZombie(objects, robot_info):
       elif item.object_class_subtype == "PURPLE_ZOMBIE":
         # If purple zombie, call helper func
         avoidPurpleZombie(objects, item, risk_multiplier)
-      else:
+      # else:
           # RUN
 
 #--Behavior--
@@ -250,7 +284,7 @@ def avoidZombie(objects, robot_info):
 def avoidPurpleZombie(objects, item, risk_multiplier):
   #check if there's a berry
   targetBerry = checkForItem(objects, BERRY)
-  while targetBerry is not None and targetBerry.distance > 1:
+  #while targetBerry is not None and targetBerry.distance > 1:
     #go towards berry 
     
   #if close to berry, turn Right or left
@@ -265,13 +299,29 @@ def avoidPurpleZombie(objects, item, risk_multiplier):
 
 
 
+class CompassConvertor:
+    def __init__(self, compass):
+      self.compass = compass
+      self.orientation = 0
+    def fetch_absolute_heading(self):
+      globalHeading = compute_heading(self.compass.getValues()[0], self.compass.getValues()[1])
+      old_heading_range = np.pi
+      adjusted_heading_range = 360 
+      new_global_heading = (((globalHeading - (-1)) * adjusted_heading_range) / old_heading_range)
+      self.orientation = new_global_heading
 
-
-
-
-
-
-
+#TURN THAT WORKED ON WEBOTS: 
+globalHeading = np.arctan(compass.getValues()[1] / compass.getValues()[0])  
+        if not abs(globalHeading - 1) < 0.5: 
+            fr.setVelocity(6.28)
+            bl.setVelocity(-6.28)
+            fl.setVelocity(6.28)
+            br.setVelocity(6.28) 
+        else:
+            fr.setVelocity(0.0)
+            bl.setVelocity(0.0)
+            fl.setVelocity(0.0)
+            br.setVelocity(0.0) 
 
 #------------------CHANGE CODE ABOVE HERE ONLY--------------------------
 
