@@ -49,11 +49,11 @@ class Object:
         self.location_vector = Vector(distance, heading)
         self.update_risk(risk_factor, attraction_factor)
       
-    def update_risk(self, risk_factor):
+    def update_risk(self, risk_factor, attraction_factor):
         # risk factor assesses danger based on distance from object
         self.risk_factor = risk_factor
         # update risk_vecotr with new risk factor and attraction_factor = -1 or 1
-        self.risk_vector = Vector(distance * risk_factor, heading * self.attraction_factor)
+        self.risk_vector = Vector(distance * risk_factor, heading * attraction_factor)
         
 class Zombie(Object):
     def __init__(self, distance, heading):
@@ -116,7 +116,25 @@ class BlueZombie(Zombie):
     def __init__(self, distance, heading):
       self.object_class_subtype = "BLUE_ZOMBIE"
       super().__init__(distance, heading, risk_factor = self.risk_factor)
-        
+
+#pass in compass object, compass x and y before turning, targetAngle, and wheel objects
+def goToHeading(compass, startHeading, targetAngle, fr, br, br, bl):
+  current = [compass.getValues()[0], compass.getValues()[1]]
+  dot_product = startHeading[0] * current[0] + startHeading[1] * current[1]
+  startMag = compute_distance(startHeading[0], startHeading[1])
+  currentMag = compute_distance(current[0], current[1])   
+  angle = np.arccos(dot_product / (startMag * currentMag))
+
+  if not abs(angle - targetAngle) < 0.05: 
+    fr.setVelocity(6.28)
+    bl.setVelocity(-6.28)
+    fl.setVelocity(6.28)
+    br.setVelocity(6.28)
+  else:
+    fr.setVelocity(0.0)
+    bl.setVelocity(0.0)
+    fl.setVelocity(0.0)
+    br.setVelocity(0.0) 
 #--helper--
 #Returns closest object of given type
 def checkForItem(objects, typeOfObject, *args):
@@ -131,19 +149,6 @@ def checkForItem(objects, typeOfObject, *args):
         itemFound = item
         
   return itemFound
-
-
-#--Behavior--
-#wander when no objects in sight
-def wander(objects):
-  heading, magnitude = 0, 0
-  
-  if len(objects) == 0:
-    heading = np.random.normal(1, 0.25) * 3.141596
-    magnitude = 0.2
-  
-  return heading, magnitude
-
 
 #--Helper--
 def updateBerryDict(berry_color, berry_effect):
@@ -175,6 +180,19 @@ def updateBerryDict(berry_color, berry_effect):
     temp = berry_effects[berry_color][0]
     berry_effects[berry_color][0] = berry_effects[berry_color][1]
     berry_effects[berry_color][1] = temp
+
+
+#--Behavior--
+#wander when no objects in sight
+def wander(objects):
+  heading, magnitude = 0, 0
+  
+  if len(objects) == 0:
+    heading = np.random.normal(1, 0.25) * 3.141596
+    magnitude = 0.2
+  
+  return heading, magnitude
+
 
 #--Behavior--
 # pursues the berry that is needed the most, or the closest berry
@@ -222,15 +240,8 @@ def pursueBerry(objects, robot_info):
     
   if berry is not null:
     objects.remove(berry)
-    berry.item.update_risk(0.5 * berry.distance)
+    berry.item.update_risk(0.5 * berry.distance, berry.attraction_factor)
     objects.append(berry)
-
-#--Behavior--
-def noise():
-  magnitude = 0.01
-  heading = np.random.normal(0, 0.25)
-  return heading, magnitude
-   
 
 #--Behavior--
 #turns towards a detected solid (not zombie) in the lidar to classify it
@@ -265,14 +276,14 @@ def avoidZombie(objects, robot_info):
     if item.object_class == "ZOMBIE":
       if item.object_class_subtype == "GREEN_ZOMBIE":
         # green zombies chase if you are near and move randomly when far
-        item.update_risk(0.5 * item.distance * risk_multiplier)
+        item.update_risk(0.5 * item.distance * risk_multiplier, item.attraction_factor)
       elif item.object_class_subtype == "BLUE_ZOMBIE":
         # will relentlessly chase robot
-        item.update_risk(0.3 * item.distance * risk_multiplier)
+        item.update_risk(0.3 * item.distance * risk_multiplier, item.attraction_factor)
       elif item.object_class_subtype == "AQUA_ZOMBIE":
         if item.distance < 4:
           # only generate when in 3m range
-          item.update_risk(1 * item.distance * risk_multiplier)
+          item.update_risk(1 * item.distance * risk_multiplier, item.attraction_factor)
       elif item.object_class_subtype == "PURPLE_ZOMBIE":
         # If purple zombie, call helper func
         avoidPurpleZombie(objects, item, risk_multiplier)
@@ -292,10 +303,31 @@ def avoidPurpleZombie(objects, item, risk_multiplier):
   #if no berry, just have the usual opposite vector 
 
   
-  
   return
 
+# --Helper--
+def getResultantVector(objects):
+  res_x = 0
+  res_y = 0
+  res_len = 0
+  res_angle = 0
 
+  for i in range(0, len(objects))
+    new_len = objects[i].risk_vector.distance
+    new_angle = math.radians(objects[i].risk_vector.heading)
+
+    # x = L1 cos(a) + L2cos(a + b)
+    temp_x = res_len * math.cos(res_angle) + new_len * math.cos(res_angle + new_angle)
+    # y = L1 sin(a) + L2sin(a + b)
+    temp_y = res_len * math.sin(res_angle) + new_len * math.sin(res_angle + new_angle)
+
+    # Get resulting vector attributes
+    res_x = temp_x
+    res_y = temp_y
+    res_len = math.sqrt(temp_x * temp_x + temp_y * temp_y)
+    res_angle = math.tan(temp_y/temp_x)
+
+  return Vector(res_len, res_angle)
 
 
 
@@ -441,39 +473,35 @@ def main():
         timer += 1
         
      #------------------CHANGE CODE BELOW HERE ONLY--------------------------   
+        # **** PART 1: Classify berries ****
         #called every timestep
         curr_health = robot_info[0]
         curr_energy = robot_info[1]
         curr_armor = robot_info[2]
 
         # previous berry can only have 1 effect
-        if (curr_health - prev_health >= 18):
+        if (curr_health - prev_health >= 20):
           # classify last berry as +20 HEALTH
-        elif(curr_energy - prev_energy <= -18):
+        elif(curr_energy - prev_energy <= -20):
           # classify last berry as -20 ENERGY
-        elif(curr_energy - prev_energy >= 38):
+        elif(curr_energy - prev_energy >= 40):
           # classify last berry as +40 ENERGY
-        elif(curr_armor >= 14):
+        elif(curr_armor >= 15):
           # classify last berry as +15 ARMOR
-
         
-        
-        #possible pseudocode for moving forward, then doing a 90 degree left turn
-        #if i <100
-            #base_forwards() -> can implement in Python with Webots C code (/Zombie world/libraries/youbot_control) as an example or make your own
-        
-        #if == 100 
-            # base_reset() 
-            # base_turn_left()  
-            #it takes about 150 timesteps for the robot to compli ete the turn
-                 
-        #if i==300
-            # i = 0
-        
-        #i+=1
         prev_health = curr_health
         prev_energy = curr_energy
-        #make decisions using inputs if you choose to do so
+        
+        # **** PART 2: Use Motor Schema to create resultant vector from behaviors ****
+        avoidZombie(objects, robot_info)
+        pursueBerry(objects, robot_info)
+        goToSolid(objects)
+        wander(objects)
+
+        res_vector = getResultantVector(objects)
+
+        # **** PART 3: Send resultant vector data to actuators ****
+        
          
         #------------------CHANGE CODE ABOVE HERE ONLY--------------------------
         
