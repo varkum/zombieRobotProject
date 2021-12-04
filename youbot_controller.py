@@ -118,23 +118,36 @@ class BlueZombie(Zombie):
       super().__init__(distance, heading, risk_factor = self.risk_factor)
 
 #pass in compass object, compass x and y before turning, targetAngle, and wheel objects
-def goToHeading(compass, startHeading, targetAngle, fr, br, br, bl):
+def goToHeading(compass, startHeading, targetAngle, fr, fl, br, bl):
   current = [compass.getValues()[0], compass.getValues()[1]]
   dot_product = startHeading[0] * current[0] + startHeading[1] * current[1]
-  startMag = compute_distance(startHeading[0], startHeading[1])
-  currentMag = compute_distance(current[0], current[1])   
+  startMag = compute_euclidean_distance(startHeading[0], startHeading[1])
+  currentMag = compute_euclidean_distance(current[0], current[1])   
   angle = np.arccos(dot_product / (startMag * currentMag))
-
-  if not abs(angle - targetAngle) < 0.05: 
-    fr.setVelocity(6.28)
-    bl.setVelocity(-6.28)
-    fl.setVelocity(6.28)
-    br.setVelocity(6.28)
-  else:
-    fr.setVelocity(0.0)
-    bl.setVelocity(0.0)
-    fl.setVelocity(0.0)
-    br.setVelocity(0.0) 
+  speed = 14.81
+  #if angle is more than 180, turn right 
+  if (targetAngle > np.pi):
+    if not abs(angle - targetAngle + np.pi) < 0.05:
+      fr.setVelocity(-speed)
+      bl.setVelocity(speed)
+      fl.setVelocity(speed)
+      br.setVelocity(-speed)
+    else:
+      fr.setVelocity(0.0)
+      bl.setVelocity(0.0)
+      fl.setVelocity(0.0)
+      br.setVelocity(0.0) 
+  else: # turn left
+    if not abs(angle - targetAngle) < 0.05: 
+      fr.setVelocity(speed)
+      bl.setVelocity(-speed)
+      fl.setVelocity(-speed)
+      br.setVelocity(speed)
+    else:
+      fr.setVelocity(0.0)
+      bl.setVelocity(0.0)
+      fl.setVelocity(0.0)
+      br.setVelocity(0.0) 
 #--helper--
 #Returns closest object of given type
 def checkForItem(objects, typeOfObject, *args):
@@ -295,15 +308,18 @@ def avoidZombie(objects, robot_info):
 def avoidPurpleZombie(objects, item, risk_multiplier):
   #check if there's a berry
   targetBerry = checkForItem(objects, BERRY)
-  #while targetBerry is not None and targetBerry.distance > 1:
-    #go towards berry 
+  while targetBerry is not None and targetBerry.distance > 1:
+    targetBerry.update_risk(item.distance * risk_multiplier)
     
-  #if close to berry, turn Right or left
+  if (targetBerry.distance < 1):
+    objects.remove(targetBerry)
+    targetBerry.heading = np.pi / 2
+    objects.append(targetBerry) 
+    
+  if (targetBerry is None):
+    item.update_risk(1 * item.distance * risk_multiplier, item.attraction_factor)
 
-  #if no berry, just have the usual opposite vector 
 
-  
-  return
 
 # --Helper--
 def getResultantVector(objects):
@@ -330,30 +346,6 @@ def getResultantVector(objects):
   return Vector(res_len, res_angle)
 
 
-
-class CompassConvertor:
-    def __init__(self, compass):
-      self.compass = compass
-      self.orientation = 0
-    def fetch_absolute_heading(self):
-      globalHeading = compute_heading(self.compass.getValues()[0], self.compass.getValues()[1])
-      old_heading_range = np.pi
-      adjusted_heading_range = 360 
-      new_global_heading = (((globalHeading - (-1)) * adjusted_heading_range) / old_heading_range)
-      self.orientation = new_global_heading
-
-#TURN THAT WORKED ON WEBOTS: 
-globalHeading = np.arctan(compass.getValues()[1] / compass.getValues()[0])  
-        if not abs(globalHeading - 1) < 0.5: 
-            fr.setVelocity(6.28)
-            bl.setVelocity(-6.28)
-            fl.setVelocity(6.28)
-            br.setVelocity(6.28) 
-        else:
-            fr.setVelocity(0.0)
-            bl.setVelocity(0.0)
-            fl.setVelocity(0.0)
-            br.setVelocity(0.0) 
 
 #------------------CHANGE CODE ABOVE HERE ONLY--------------------------
 
@@ -394,8 +386,8 @@ def main():
     #camera2 = robot.getDevice("ForwardHighResSmallFov")
     #camera2.enable(timestep)
     
-    #camera3 = robot.getDevice("ForwardHighRes")
-    #camera3.enable(timestep)
+    camera3 = robot.getDevice("ForwardHighRes")
+    camera3.enable(timestep)
     
     #camera4 = robot.getDevice("ForwardHighResSmall")
     #camera4.enable(timestep)
@@ -439,7 +431,8 @@ def main():
     
     
     i=0
-           
+    startTurnHeading = [None, None]
+          
 
     #------------------CHANGE CODE ABOVE HERE ONLY--------------------------
     
@@ -473,6 +466,7 @@ def main():
         timer += 1
         
      #------------------CHANGE CODE BELOW HERE ONLY--------------------------   
+
         # **** PART 1: Classify berries ****
         #called every timestep
         curr_health = robot_info[0]
@@ -497,12 +491,24 @@ def main():
         pursueBerry(objects, robot_info)
         goToSolid(objects)
         wander(objects)
-
         res_vector = getResultantVector(objects)
+        
+        #go forward indefinitely --> change maybe to stop and turn for bigger angles
+        fr.setVelocity(14.8)
+        bl.setVelocity(14.8)
+        fl.setVelocity(14.8)
+        br.setVelocity(14.8) 
+
 
         # **** PART 3: Send resultant vector data to actuators ****
-        
-         
+        if (i % 4 == 0):
+          #need to update the starting absolute heading before each turn
+          startTurnHeading[0], startTurnHeading[1] = compass.getValues()[0], compass.getValues()[1]
+          #execute the turn
+          turnToHeading(compass, startTurnHeading, res_vector, fr, fl, br, bl)
+
+        #update count of while loop
+        i++
         #------------------CHANGE CODE ABOVE HERE ONLY--------------------------
         
         

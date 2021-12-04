@@ -1,6 +1,7 @@
 Update wander behavior to fit into vector schema
-Convert compass output to angles and vice versa
-Purple zombie behavior - Varun
+
+Purple zombie behavior
 Sum vectors
-Send vector to actuator
+
 Maneuver to get out of walls, get through doors, etc.
+Deal with walls and other obstacles --> perpendicular vector when two vectors are in opposite directions and cancel out almost
