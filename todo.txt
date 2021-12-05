@@ -1,7 +1,6 @@
 Update wander behavior to fit into vector schema
 
-Purple zombie behavior
-Sum vectors
+
 
 Maneuver to get out of walls, get through doors, etc.
 Deal with walls and other obstacles --> perpendicular vector when two vectors are in opposite directions and cancel out almost
